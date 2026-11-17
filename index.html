@@ -383,15 +383,14 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between}
 <noscript><p style="padding:20px;text-align:center;color:#fff">This page needs JavaScript to work.</p></noscript>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <script>
 (function(){
 'use strict';
 
-/* ---------- 1. EmailJS settings: ideas are delivered to your inbox through EmailJS ----------
-   Fill these three values after you set up EmailJS (see README.md).
-   Your own email address is NOT written anywhere in this file; it is stored inside your EmailJS account. */
-const EMAILJS = { publicKey:'', serviceId:'', templateId:'' };
+/* ---------- 1. Formspree: ideas are delivered to your inbox through Formspree ----------
+   This link only lets people send ideas into your form. Your own email address is NOT written anywhere in this file;
+   it is stored inside your Formspree account. */
+const FORMSPREE_URL = 'https://formspree.io/f/xvkaaoay';
 
 /* ---------- 2. Photos shown on the Explore page (free-licence images from Wikimedia Commons) ----------
    Each photo is loaded from Wikimedia Commons by its file name and credited under the picture.
@@ -562,11 +561,12 @@ $('#thanksExplore').addEventListener('click',()=>showExplore());
 $('#thanksAnother').addEventListener('click',()=>{ideaBack='choice';go('idea')});
 $$('[data-share]').forEach(b=>b.addEventListener('click',()=>{ideaBack='explore';go('idea')}));
 
-/* ---------- 4. Sending an idea by email (through EmailJS) ---------- */
-const mailReady = Object.values(EMAILJS).every(Boolean) && !!window.emailjs;
+/* ---------- 4. Sending an idea by email (through Formspree) ---------- */
+const mailReady = !!FORMSPREE_URL;
 async function deliver(p){
   if(!mailReady){await sleep(600);return 'preview'}
-  await window.emailjs.send(EMAILJS.serviceId,EMAILJS.templateId,p,{publicKey:EMAILJS.publicKey});
+  const r = await fetch(FORMSPREE_URL,{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify(p)});
+  if(!r.ok) throw new Error('Send failed: '+r.status);
   return 'sent';
 }
 async function submitIdea(){
@@ -581,11 +581,12 @@ async function submitIdea(){
   const examTxt = !p.exam ? '-' : p.exam.plan==='now' ? 'Preparing now'+(p.exam.name?': '+p.exam.name:'') : p.exam.plan==='future' ? 'Wants to in the future'+(p.exam.name?': '+p.exam.name:'') : 'Not planning to';
   const skillTxt = (p.skills||[]).map(k=>{const s=SKILLS.find(x=>x.k===k);return s?s.label:k}).join(', ') || 'None picked';
   const params = {
-    from_name:[p.first,p.middle,p.last].filter(Boolean).join(' '),
+    _subject:'New Lernen idea: '+($('#ideaTitle').value.trim()||'(no title)'),
+    name:[p.first,p.middle,p.last].filter(Boolean).join(' '),
     mobile:p.phone||'-', class_level:p.level||'-', exam_plan:examTxt, skills:skillTxt,
     idea_title:$('#ideaTitle').value.trim()||'(no title)',
     category:CATS[$('#ideaCat').value]||'Not chosen',
-    description:text,
+    message:text,
     submitted_at:new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata'})+' IST'
   };
   try{
